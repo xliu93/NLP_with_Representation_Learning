@@ -2,6 +2,22 @@
 
 Practice jupyter notebooks for RNN, encoder-decoder system, attention, LSTM staff implemented in pyTorch. 
 
+### Overview
+
+#### 1. Tutorials
+- 01. PyTorch Basics
+- 02. Logistic Regression (sklearn/pytorch)
+- 03. Deep Learning Training Workflow
+- 04. Building a Bag-of-Words Model
+- 05. Document Classification with FastText
+- 06. RNN/CNN based Language Classification
+- 07. Intrinsic Evaluation of Word Vectors (GloVe/FastText)
+- 08. Language Modeling with KenLM
+
+#### 2. Experiments
+- Bag-of-Ngram and Document Classification
+- RNN/CNN based Natural Language Inference
+
 ### Get started
 (for MacOS)
 
