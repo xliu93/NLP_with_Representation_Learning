@@ -1,3 +1,10 @@
 *checkpoints
-data/
 .DS_store
+*.txt
+*.vec
+*.bin
+*.train
+*.test
+*.val
+*.arpa
+*.p
