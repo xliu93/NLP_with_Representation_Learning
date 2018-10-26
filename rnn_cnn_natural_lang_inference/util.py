@@ -2,24 +2,45 @@ import os
 import numpy as np
 import torch.nn.functional as F
 from argparse import ArgumentParser
+
 from constants import DataFileName, DATA_PATH
 
+PAD_TOKEN = '<pad>'
+UNK_TOKEN = '<unk>'
+PAD_IDX = 0
+UNK_IDX = 1
 
-def get_fasttext_embedding(vocab_size, start_idx=0):
-    ft_file = DATA_PATH + DataFileName.FT_VOCAB
+
+def get_fasttext_embedding(vocab_size, corpus_name, start_idx=2):
+    """
+
+    :param vocab_size: number of words to select
+    :param corpus_name: for FastText, use Wiki-News or Common Crawl corpus, {'news', 'cc'}
+    :param start_idx: the start index instead of 0 when working with PAD_IDX and UNK_IDX
+    :return:
+    """
+    # locate file
+    ft_file = DATA_PATH + (DataFileName.FT_NEWS_VOCAB if corpus_name == 'news' else DataFileName.FT_CC_VOCAB)
+
+    # read file and build vocabulary
+    # todo: add vectors for <pad> and <unk>
+    loaded_embeddings_ft = np.zeros((vocab_size, 300))
+    words_ft = {PAD_TOKEN: PAD_IDX,
+                UNK_TOKEN: UNK_IDX}
+    idx2words_ft = {PAD_IDX: PAD_TOKEN,
+                    UNK_IDX: UNK_TOKEN}
+    ordered_words_ft = [PAD_TOKEN, UNK_TOKEN]
+    loaded_embeddings_ft[PAD_IDX, :] = np.zeros((1, 300))
+    loaded_embeddings_ft[UNK_TOKEN, :] = np.random.rand(1, 300)
     with open(ft_file) as f:
-        loaded_embeddings_ft = np.zeros((vocab_size, 300))
-        words_ft = {}
-        idx2words_ft = {}
-        ordered_words_ft = []
         # Each line in FastText pre-trained word vectors file:
         # 0-index: word
         # following: embedded vectors
         for i, line in enumerate(f):
-            if i >= vocab_size:
+            if i >= (vocab_size - 2):
                 break
             s = line.split()
-            loaded_embeddings_ft[i, :] = np.asarray(s[1:])
+            loaded_embeddings_ft[i + start_idx, :] = np.asarray(s[1:])
             words_ft[s[0]] = i + start_idx
             idx2words_ft[i + start_idx] = s[0]
             ordered_words_ft.append(s[0])

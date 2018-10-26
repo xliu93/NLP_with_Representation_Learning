@@ -19,7 +19,8 @@ class DataFileName:
     SNLI_TRAIN = 'snli_train.tsv'
     SNLI_TRAIN_MINI = 'snli_train_mini.tsv'  # a subset of SNLI train set
     SNLI_VAL = 'snli_val.tsv'
-    FT_VOCAB = 'wiki-news-300d-1M.vec'
+    FT_NEWS_VOCAB = 'wiki-news-300d-1M.vec'
+    FT_CC_VOCAB = 'crawl-300d-2M.vec'
 
 
 class HParamKey:
