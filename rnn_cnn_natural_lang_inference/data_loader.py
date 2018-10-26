@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from constants import DATA_PATH, DataFileName
+from constants import DATA_PATH, DataFileName, DEVICE
 
 MAX_LENGTH = 200
 PAD_IDX = 0
@@ -70,11 +70,11 @@ def snli_collate_func(batch):
                              mode='constant',
                              constant_values=PAD_IDX)
         hypo_list.append(padded_hypo)
-    return [torch.from_numpy(np.array(prem_list)),
-            torch.from_numpy(np.array(hypo_list)),
-            torch.LongTensor(prem_len_list),
-            torch.LongTensor(hypo_len_list),
-            torch.LongTensor(label_list)]
+    return [torch.from_numpy(np.array(prem_list)).to(DEVICE),
+            torch.from_numpy(np.array(hypo_list)).to(DEVICE),
+            torch.LongTensor(prem_len_list).to(DEVICE),
+            torch.LongTensor(hypo_len_list).to(DEVICE),
+            torch.LongTensor(label_list).to(DEVICE)]
 
 
 class snliDataset(Dataset):

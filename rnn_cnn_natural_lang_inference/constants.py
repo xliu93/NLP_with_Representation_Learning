@@ -1,7 +1,16 @@
 """
 Constants and Keys
 """
-DATA_PATH = '/Users/xliu/Downloads/hw2_data/'
+import torch
+import sys
+
+# Dynamic data path
+if sys.platform == 'linux':
+    DATA_PATH = '/scratch/xl2053/nlp/hw2_data/'  # NYU HPC
+elif sys.platform == 'darwin':
+    DATA_PATH = '/Users/xliu/Downloads/hw2_data/'  # local
+
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class DataFileName:

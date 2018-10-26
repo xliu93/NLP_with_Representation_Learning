@@ -1,5 +1,7 @@
 *checkpoints
 .DS_store
+*/__pycache__/
+*.log
 *.txt
 *.vec
 *.bin
@@ -8,3 +10,5 @@
 *.val
 *.arpa
 *.p
+*.bpe
+*.pt
