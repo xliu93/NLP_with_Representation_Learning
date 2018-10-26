@@ -23,7 +23,7 @@ def get_snli_data():
     train_data: pandas.DataFrame with columns ['sentence1', 'sentence2', 'label']
     valid_data: pandas.DataFrame with same columns as above
     """
-    train_file = DATA_PATH + DataFileName.SNLI_TRAIN_MINI  # pre-train test
+    train_file = DATA_PATH + DataFileName.SNLI_TRAIN  # pre-train test
     val_file = DATA_PATH + DataFileName.SNLI_VAL
     train_data = pd.read_csv(train_file, sep='\t')
     valid_data = pd.read_csv(val_file, sep='\t')

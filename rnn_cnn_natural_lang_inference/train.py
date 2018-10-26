@@ -22,7 +22,7 @@ logger.info("START JOB NLI on device ({})".format(DEVICE))
 
 
 # Load pre-trained embeddings of FastText #
-word2idx, idx2word, ft_embs = get_fasttext_embedding(50000)
+word2idx, idx2word, ft_embs = get_fasttext_embedding(50000, 'cc')
 logger.info("\n===== word2idx ======\n{}\n=====================".format(word2idx))
 
 # Load train/validation sets
@@ -62,7 +62,7 @@ logger.info("Initialized a model:\n{}".format(model))
 
 # Initialization for training
 learning_rate = 0.01
-num_epochs = 10
+num_epochs = 25
 criterion = nn.CrossEntropyLoss()
 optimizer = opt.Adam(model.parameters(), lr=learning_rate)
 

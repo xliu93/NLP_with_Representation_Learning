@@ -11,7 +11,7 @@ PAD_IDX = 0
 UNK_IDX = 1
 
 
-def get_fasttext_embedding(vocab_size, corpus_name, start_idx=2):
+def get_fasttext_embedding(vocab_size, corpus_name='news', start_idx=2):
     """
 
     :param vocab_size: number of words to select
@@ -31,7 +31,7 @@ def get_fasttext_embedding(vocab_size, corpus_name, start_idx=2):
                     UNK_IDX: UNK_TOKEN}
     ordered_words_ft = [PAD_TOKEN, UNK_TOKEN]
     loaded_embeddings_ft[PAD_IDX, :] = np.zeros((1, 300))
-    loaded_embeddings_ft[UNK_TOKEN, :] = np.random.rand(1, 300)
+    loaded_embeddings_ft[UNK_IDX, :] = np.random.rand(1, 300)
     with open(ft_file) as f:
         # Each line in FastText pre-trained word vectors file:
         # 0-index: word
