@@ -7,4 +7,5 @@ An implementation of RNN/CNN based models for Stanford Natural Language Inferenc
  
 ### 3. Reference
 - lab4 session of rnn/cnn based classification models
+- pytorch example of [snli](https://github.com/pytorch/examples/tree/master/snli)
 
