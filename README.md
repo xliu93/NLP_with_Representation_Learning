@@ -13,6 +13,7 @@ Practice jupyter notebooks for RNN, encoder-decoder system, attention, LSTM staf
 - 06. RNN/CNN based Language Classification
 - 07. Intrinsic Evaluation of Word Vectors (GloVe/FastText)
 - 08. Language Modeling with KenLM
+- 09. Language Modeling with Byte Pair Encoding
 
 #### 2. Experiments
 - Bag-of-Ngram and Document Classification

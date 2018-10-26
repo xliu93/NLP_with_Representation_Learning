@@ -13,6 +13,11 @@ elif sys.platform == 'darwin':
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+class FTcorpus:
+    WIKI_NEWS = 'news'
+    COMM_CRAWL = 'cc'
+
+
 class DataFileName:
     MNLI_TRAIN = 'mnli_train.tsv'
     MNLI_VAL = 'mnli_val.tsv'
@@ -29,6 +34,7 @@ class HParamKey:
     HIDDEN_SIZE = 'hidden_size'
     NUM_LAYER = 'num_layers'
     NUM_CLASS = 'num_classes'
+    KERNEL_SIZE = 'kernel_size'
 
 
 LogConfig = {

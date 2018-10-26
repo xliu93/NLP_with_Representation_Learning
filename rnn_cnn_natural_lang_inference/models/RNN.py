@@ -56,6 +56,7 @@ class RNNModel(nn.Module):
         self.linear = nn.Linear(in_features=self.hidden_size*4, out_features=self.num_classes)
 
     def forward(self, prem, hypo, p_len, h_len):
+        # todo: confirm and remove length variables
         prem_embed = self.embed(prem)
         hypo_embed = self.embed(hypo)
         # print("prem, hypo embedded:", prem_embed.shape, hypo_embed.shape)

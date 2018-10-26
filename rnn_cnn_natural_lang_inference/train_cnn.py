@@ -11,8 +11,8 @@ from constants import HParamKey, LogConfig, DEVICE
 from util import (get_fasttext_embedding, compute_accuracy,
                   makedirs, get_args)
 from data_loader import get_snli_data, snli_token2id, snliDataset, snli_collate_func
-from models.RNN import RNNModel
-
+# from models.RNN import RNNModel
+from models.CNN import CNNModel
 
 # config logger
 logger = logging.getLogger('__main__')
@@ -58,12 +58,12 @@ model_config = {
     HParamKey.NUM_LAYER: 1,
     'trained_emb': ft_embs
 }
-model = RNNModel(config=model_config).to(DEVICE)  # make sure the model moved to device
+model = CNNModel(config=model_config).to(DEVICE)  # make sure the model moved to device
 logger.info("Initialized a model:\n{}".format(model))
 
 # Initialization for training
 learning_rate = 0.01
-num_epochs = 25
+num_epochs = 10
 criterion = nn.CrossEntropyLoss()
 optimizer = opt.Adam(model.parameters(), lr=learning_rate)
 
