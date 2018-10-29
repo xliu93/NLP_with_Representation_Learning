@@ -53,7 +53,7 @@ class RNNModel(nn.Module):
         self.vocab_size, self.emb_size = trained_emb.shape
         self.embed = nn.Embedding.from_pretrained(trained_emb.float())
         # encoder
-        self.encoder = Encoder(self.emb_size, self.hidden_size)
+        self.encoder = Encoder(self.emb_size, self.hidden_size, self.dropout_rate)
         # scoring
         self.scoring = nn.Sequential(
             nn.Linear(in_features=self.hidden_size * 4, out_features=self.hidden_size),

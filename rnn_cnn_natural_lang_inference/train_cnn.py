@@ -16,13 +16,13 @@ from models.CNN import CNNModel
 
 # config logger
 logger = logging.getLogger('__main__')
-LogConfig['handlers']['default']['filename'] = 'snli_{}.log'.format(int(time.time()))
+LogConfig['handlers']['default']['filename'] = 'logs/cnn_snli_{}.log'.format(int(time.time()))
 logging.config.dictConfig(LogConfig)
 logger.info("START JOB NLI on device ({})".format(DEVICE))
 
 
 # Load pre-trained embeddings of FastText #
-word2idx, idx2word, ft_embs = get_fasttext_embedding(50000, 'cc')
+word2idx, idx2word, ft_embs = get_fasttext_embedding(100000, 'news')
 logger.info("Pre-trained embeddings loaded!")
 # logger.info("\n===== word2idx ======\n{}\n=====================".format(word2idx))
 
@@ -39,7 +39,7 @@ logger.info("Converted to indices! ")
 
 # Create DataLoader
 logger.info("Creating DataLoader...")
-BATCH_SIZE = 32
+BATCH_SIZE = 256
 train_dataset = snliDataset(train_prem, train_hypo, train_label)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=BATCH_SIZE,
@@ -56,14 +56,15 @@ logger.info("DataLoader generated!")
 model_config = {
     HParamKey.HIDDEN_SIZE: 150,
     HParamKey.NUM_LAYER: 1,
+    HParamKey.DROPOUT_PROB: 0.5,
     'trained_emb': ft_embs
 }
 model = CNNModel(config=model_config).to(DEVICE)  # make sure the model moved to device
 logger.info("Initialized a model:\n{}".format(model))
 
 # Initialization for training
-learning_rate = 0.01
-num_epochs = 10
+learning_rate = 0.001
+num_epochs = 25
 criterion = nn.CrossEntropyLoss()
 optimizer = opt.Adam(model.parameters(), lr=learning_rate)
 
@@ -77,7 +78,7 @@ for epoch in range(num_epochs):
         loss = criterion(outputs, label)
         loss.backward()
         optimizer.step()
-        if i > 0 and i % 30 == 0:
+        if i > 0 and i % 100 == 0:
             train_acc = compute_accuracy(train_loader, model)
             val_acc = compute_accuracy(val_loader, model)
             logger.info('Epoch: [{}/{}], Step: [{}/{}], Loss: {}, TrainAcc: {} ValAcc: {}'.format(

@@ -16,7 +16,7 @@ from models.RNN import RNNModel
 
 # config logger
 logger = logging.getLogger('__main__')
-LogConfig['handlers']['default']['filename'] = 'snli_{}.log'.format(int(time.time()))
+LogConfig['handlers']['default']['filename'] = 'logs/rnn_snli_{}.log'.format(int(time.time()))
 logging.config.dictConfig(LogConfig)
 logger.info("START JOB NLI on device ({})".format(DEVICE))
 
@@ -64,7 +64,7 @@ logger.info("Initialized a model:\n{}".format(model))
 
 # Initialization for training
 learning_rate = 0.01
-num_epochs = 25
+num_epochs = 5
 criterion = nn.CrossEntropyLoss()
 optimizer = opt.Adam(model.parameters(), lr=learning_rate)
 
@@ -78,7 +78,7 @@ for epoch in range(num_epochs):
         loss = criterion(outputs, label)
         loss.backward()
         optimizer.step()
-        if i > 0 and i % 30 == 0:
+        if i > 0 and i % 100 == 0:
             train_acc = compute_accuracy(train_loader, model)
             val_acc = compute_accuracy(val_loader, model)
             logger.info('Epoch: [{}/{}], Step: [{}/{}], Loss: {}, TrainAcc: {} ValAcc: {}'.format(

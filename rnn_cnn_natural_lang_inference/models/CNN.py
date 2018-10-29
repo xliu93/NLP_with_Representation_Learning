@@ -6,8 +6,9 @@ from constants import HParamKey
 
 DEFAULT_HIDDEN_SIZE = 200
 DEFAULT_NUM_LAYERS = 2
-NUM_CLASSES = 3
+DEFAULT_NUM_CLASSES = 3
 DEFAULT_KERNEL_SIZE = 5
+DEFAULT_DROPOUT = 0.5
 
 
 class Encoder(nn.Module):
@@ -35,28 +36,32 @@ class Encoder(nn.Module):
         hidden = F.relu(hidden.contiguous().view(-1, hidden.size(-1))).view(batch_size, seq_len, hidden.size(-1))
         # max-pooling
         mp = nn.MaxPool2d((seq_len, 1))
-        hidden = mp(hidden).reshape(batch_size, self.hidden_size)
+        hidden = mp(hidden).reshape(batch_size, self.hidden_size)  # hidden = torch.squeeze(mp(hidden), dim=1)
         return hidden
 
 
 class CNNModel(nn.Module):
     def __init__(self, config):
         super(CNNModel, self).__init__()
-
+        # parse parameters
         self.num_layers = config.get(HParamKey.NUM_LAYER, DEFAULT_NUM_LAYERS)
         self.hidden_size = config.get(HParamKey.HIDDEN_SIZE, DEFAULT_HIDDEN_SIZE)
-        self.num_classes = config.get(HParamKey.NUM_CLASS, NUM_CLASSES)
+        self.num_classes = config.get(HParamKey.NUM_CLASS, DEFAULT_NUM_CLASSES)
+        self.dropout_prob = config.get(HParamKey.DROPOUT_PROB, DEFAULT_DROPOUT)
         self.kernel_size = config.get(HParamKey.KERNEL_SIZE, DEFAULT_KERNEL_SIZE)
         # embedding
         trained_emb = torch.from_numpy(config['trained_emb'])  # DoubleTensor
         self.vocab_size, self.emb_size = trained_emb.shape
         self.embed = nn.Embedding.from_pretrained(trained_emb.float())
-        # encoder
+        # encoding
         self.encoder = Encoder(self.emb_size, self.hidden_size, self.kernel_size)
         # scoring
-        self.softmax = nn.Softmax(dim=1)
-        # todo: decide in_feature dimension
-        self.linear = nn.Linear(self.hidden_size * 2, self.num_classes)
+        self.scoring = nn.Sequential(
+            nn.Linear(self.hidden_size * 2, self.hidden_size),
+            nn.ReLU(),
+            nn.Dropout(p=self.dropout_prob),
+            nn.Linear(self.hidden_size, self.num_classes)
+        )
 
     def forward(self, prem, hypo, p_len, h_len):
         # embedding
@@ -68,6 +73,5 @@ class CNNModel(nn.Module):
         # concat
         cat_encoded = torch.cat([premise, hypothesis], dim=1)
         # scoring
-        scores = self.softmax(cat_encoded)
-        scores = self.linear(scores)
+        scores = self.scoring(cat_encoded)
         return scores
