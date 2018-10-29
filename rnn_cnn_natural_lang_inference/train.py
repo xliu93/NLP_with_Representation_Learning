@@ -22,7 +22,7 @@ logger.info("START JOB NLI on device ({})".format(DEVICE))
 
 
 # Load pre-trained embeddings of FastText #
-word2idx, idx2word, ft_embs = get_fasttext_embedding(50000, 'cc')
+word2idx, idx2word, ft_embs = get_fasttext_embedding(100000, 'news')
 logger.info("Pre-trained embeddings loaded!")
 # logger.info("\n===== word2idx ======\n{}\n=====================".format(word2idx))
 
@@ -39,7 +39,7 @@ logger.info("Converted to indices! ")
 
 # Create DataLoader
 logger.info("Creating DataLoader...")
-BATCH_SIZE = 32
+BATCH_SIZE = 256
 train_dataset = snliDataset(train_prem, train_hypo, train_label)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=BATCH_SIZE,
@@ -54,8 +54,9 @@ logger.info("DataLoader generated!")
 
 # Get an instance of RNN Model
 model_config = {
-    HParamKey.HIDDEN_SIZE: 150,
+    HParamKey.HIDDEN_SIZE: 100,
     HParamKey.NUM_LAYER: 1,
+    HParamKey.DROPOUT_PROB: 0.5,
     'trained_emb': ft_embs
 }
 model = RNNModel(config=model_config).to(DEVICE)  # make sure the model moved to device

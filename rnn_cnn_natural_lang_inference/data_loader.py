@@ -32,6 +32,9 @@ def get_snli_data():
 
 def token2idx_dataset(sentence_list, token2idx):
     def sentence2idx(sentence):
+        # clean-up
+        sentence = sentence.lower().replace('\n', '')
+        # convert token to index
         return [token2idx[token] if token in token2idx else UNK_IDX for token in sentence]
 
     indices_data = list(map(sentence2idx, sentence_list))

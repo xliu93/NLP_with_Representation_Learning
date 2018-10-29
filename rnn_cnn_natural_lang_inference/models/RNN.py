@@ -5,27 +5,27 @@ from constants import HParamKey
 
 DEFAULT_HIDDEN_SIZE = 200
 DEFAULT_NUM_LAYERS = 1
-NUM_CLASSES = 3
+DEFAULT_NUM_CLASSES = 3
+DEFAULT_DROPOUT = 0.5
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, dropout_prob):
         super(Encoder, self).__init__()
         self.hidden_size = hidden_size
         self.rnn = nn.GRU(input_size=input_size,
                           hidden_size=hidden_size,
                           num_layers=1,
                           bidirectional=True,
-                          batch_first=True)
+                          batch_first=True,
+                          dropout=dropout_prob)
 
     def forward(self, inputs):
         batch_size = inputs.size()[0]
         state_shape = 2, batch_size, self.hidden_size  # 2 for bi-directional,
         h0 = inputs.new_zeros(state_shape)
         outputs, hidden_state = self.rnn(inputs, h0)
-        # print("in Encoder: hidden_state", hidden_state.shape)
         o = hidden_state[-2:].transpose(0, 1).contiguous().view(batch_size, -1)
-        # print("operate on last hidden state:", o.shape)
         return o
 
 
@@ -38,13 +38,16 @@ class RNNModel(nn.Module):
             'num_layers': number of layers of RNN in encoder
             'hidden_size': hidden size of neural network
             'num_classes': number of classes for prediction
+            'dropout_prob': dropout probability
             'pre_trained_emb': matrix of pre-trained word vectors, size (vocab_size, emb_size)
         }
         """
         super(RNNModel, self).__init__()
+        # parse parameters
         self.num_layers = config.get(HParamKey.NUM_LAYER, DEFAULT_NUM_LAYERS)
         self.hidden_size = config.get(HParamKey.HIDDEN_SIZE, DEFAULT_HIDDEN_SIZE)
-        self.num_classes = config.get(HParamKey.NUM_CLASS, NUM_CLASSES)
+        self.num_classes = config.get(HParamKey.NUM_CLASS, DEFAULT_NUM_CLASSES)
+        self.dropout_rate = config.get(HParamKey.DROPOUT_PROB, DEFAULT_DROPOUT)
         # embedding
         trained_emb = torch.from_numpy(config['trained_emb'])  # DoubleTensor
         self.vocab_size, self.emb_size = trained_emb.shape
@@ -52,21 +55,29 @@ class RNNModel(nn.Module):
         # encoder
         self.encoder = Encoder(self.emb_size, self.hidden_size)
         # scoring
-        self.softmax = nn.Softmax(dim=1)
-        self.linear = nn.Linear(in_features=self.hidden_size*4, out_features=self.num_classes)
+        self.scoring = nn.Sequential(
+            nn.Linear(in_features=self.hidden_size * 4, out_features=self.hidden_size),
+            nn.ReLU(),
+            nn.Dropout(p=self.dropout_rate),
+            nn.Linear(in_features=self.hidden_size, out_features=self.num_classes)
+        )
+        # self.linear = nn.Linear(in_features=self.hidden_size*4, out_features=self.num_classes)
 
     def forward(self, prem, hypo, p_len, h_len):
         # todo: confirm and remove length variables
+        # embedding
         prem_embed = self.embed(prem)
-        hypo_embed = self.embed(hypo)
-        # print("prem, hypo embedded:", prem_embed.shape, hypo_embed.shape)
-        # (batch * max_len * embedding)
+        hypo_embed = self.embed(hypo)  # (batch * max_len * embedding)
+
+        # encoding
         premise = self.encoder(prem_embed)
         hypothesis = self.encoder(hypo_embed)
+
+        # concat encoded premise and hypothesis
         prem_hypo = torch.cat([premise, hypothesis], dim=1)
         # print("after cat:", prem_hypo.shape)
-        scores = self.softmax(prem_hypo)
-        # print(scores.shape)
-        scores = self.linear(scores)
+
+        # scoring
+        scores = self.scoring(prem_hypo)
         # print(scores.shape)
         return scores

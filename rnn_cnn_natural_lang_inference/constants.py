@@ -35,6 +35,7 @@ class HParamKey:
     NUM_LAYER = 'num_layers'
     NUM_CLASS = 'num_classes'
     KERNEL_SIZE = 'kernel_size'
+    DROPOUT_PROB = 'dropout_prob'
 
 
 LogConfig = {
