@@ -1,6 +1,10 @@
 ## RNN/CNN-based Natural Language Inference
 ### 1. Introduction
-An implementation of RNN/CNN based models to tackle Stanford Natural Language Inference (SNLI) tasks. 
+An implementation of RNN/CNN based models to tackle Stanford Natural Language 
+Inference (SNLI) task. And I will further evaluate the trained models on 
+Multi-Genre Natural Language Inference (MultiNLI) task.  
+The purpose of this little project is to experience what happens when a model 
+trained and tuned for one domain or data distribution is used for another domain.
 
 ### 2. Overview
 (coming soon...)
@@ -10,8 +14,9 @@ There are some posts helped me understand the mechanism or crack some tricky par
 - a blog about [how to use pre-trained embeddings](https://medium.com/@martinpella/how-to-use-pre-trained-word-embeddings-in-pytorch-71ca59249f76)
 
 ### 4. Reference
-- lab4 session of rnn/cnn based classification models
-- pytorch example of [snli](https://github.com/pytorch/examples/tree/master/snli)
+- Lab4 session of rnn/cnn based classification models, you can take a look at my notebook [06.rnn_cnn_lang_classification](https://github.com/xliu93/NLP_with_Representation_Learning/blob/master/06.rnn_cnn_lang_classification.ipynb)
+- Pytorch example of [snli](https://github.com/pytorch/examples/tree/master/snli)
+- Our team project codebase [translation](https://github.com/ds1011teamproject/translation/tree/master)
 
 ### 5. Takeaways
 1. When I use pre-trained word embeddings, e.g. FastText, 
