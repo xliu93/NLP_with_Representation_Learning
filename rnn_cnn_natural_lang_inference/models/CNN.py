@@ -2,13 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from constants import HParamKey
-
 DEFAULT_HIDDEN_SIZE = 200
 DEFAULT_NUM_LAYERS = 2
 DEFAULT_NUM_CLASSES = 3
-DEFAULT_KERNEL_SIZE = 5
-DEFAULT_DROPOUT = 0.5
+DEFAULT_KERNEL_SIZE = 3
+DEFAULT_DROPOUT = 0.2
 
 
 class Encoder(nn.Module):
@@ -41,16 +39,21 @@ class Encoder(nn.Module):
 
 
 class CNNModel(nn.Module):
-    def __init__(self, config):
+    def __init__(self, hidden_size, num_classes, num_layers, kernel_size, dropout_p, trained_emb):
         super(CNNModel, self).__init__()
         # parse parameters
-        self.num_layers = config.get(HParamKey.NUM_LAYER, DEFAULT_NUM_LAYERS)
-        self.hidden_size = config.get(HParamKey.HIDDEN_SIZE, DEFAULT_HIDDEN_SIZE)
-        self.num_classes = config.get(HParamKey.NUM_CLASS, DEFAULT_NUM_CLASSES)
-        self.dropout_prob = config.get(HParamKey.DROPOUT_PROB, DEFAULT_DROPOUT)
-        self.kernel_size = config.get(HParamKey.KERNEL_SIZE, DEFAULT_KERNEL_SIZE)
+        # self.num_layers = config.get(HParamKey.NUM_LAYER, DEFAULT_NUM_LAYERS)
+        # self.hidden_size = config.get(HParamKey.HIDDEN_SIZE, DEFAULT_HIDDEN_SIZE)
+        # self.num_classes = config.get(HParamKey.NUM_CLASS, DEFAULT_NUM_CLASSES)
+        # self.dropout_prob = config.get(HParamKey.DROPOUT_PROB, DEFAULT_DROPOUT)
+        # self.kernel_size = config.get(HParamKey.KERNEL_SIZE, DEFAULT_KERNEL_SIZE)
+        self.hidden_size = hidden_size
+        self.num_classes = num_classes
+        self.num_layers = num_layers
+        self.kernel_size = kernel_size
+        self.dropout_prob = dropout_p
         # embedding
-        trained_emb = torch.from_numpy(config['trained_emb'])  # DoubleTensor
+        trained_emb = torch.from_numpy(trained_emb)  # DoubleTensor
         self.vocab_size, self.emb_size = trained_emb.shape
         self.embed = nn.Embedding.from_pretrained(trained_emb.float())
         # encoding

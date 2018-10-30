@@ -1,14 +1,30 @@
 import os
+import time
 import numpy as np
 import torch.nn.functional as F
-from argparse import ArgumentParser
+import logging
+import logging.config
 
-from constants import DataFileName, DATA_PATH
+from constants import (DataFileName, DATA_PATH, LogConfig,
+                       PAD_TOKEN, PAD_IDX, UNK_TOKEN, UNK_IDX)
 
-PAD_TOKEN = '<pad>'
-UNK_TOKEN = '<unk>'
-PAD_IDX = 0
-UNK_IDX = 1
+
+def init_logger(logfile, loglevel=logging.INFO):
+    logging.getLogger('__main__').setLevel(loglevel)
+    if logfile is None:
+        LogConfig['loggers']['']['handlers'] = ['console']
+        LogConfig['handlers']['default']['filename'] = 'demo.log'
+    else:
+        LogConfig['loggers']['']['handlers'] = ['console', 'default']
+        LogConfig['handlers']['default']['filename'] = logfile
+    logging.config.dictConfig(LogConfig)
+
+
+def get_results_folder(base_path='./'):
+    fd_name = '{}results_{}/'.format(base_path, int(time.time()))
+    os.makedirs(fd_name, exist_ok=True)
+    os.makedirs(fd_name+'checkpoints/', exist_ok=True)
+    return fd_name
 
 
 def get_fasttext_embedding(vocab_size, corpus_name='news', start_idx=2):
@@ -23,7 +39,6 @@ def get_fasttext_embedding(vocab_size, corpus_name='news', start_idx=2):
     ft_file = DATA_PATH + (DataFileName.FT_NEWS_VOCAB if corpus_name == 'news' else DataFileName.FT_CC_VOCAB)
 
     # read file and build vocabulary
-    # todo: add vectors for <pad> and <unk>
     loaded_embeddings_ft = np.zeros((vocab_size, 300))
     words_ft = {PAD_TOKEN: PAD_IDX,
                 UNK_TOKEN: UNK_IDX}
@@ -44,60 +59,4 @@ def get_fasttext_embedding(vocab_size, corpus_name='news', start_idx=2):
             words_ft[s[0]] = i + start_idx
             idx2words_ft[i + start_idx] = s[0]
             ordered_words_ft.append(s[0])
-    return words_ft, idx2words_ft, loaded_embeddings_ft  # ordered_words_ft ? return it or not?
-
-
-def compute_accuracy(loader, model):
-    correct = 0
-    total = 0
-    model.eval()
-    for prem, hypo, p_len, h_len, labels in loader:
-        outputs = F.softmax(model(prem, hypo, p_len, h_len), dim=1)
-        predicted = outputs.max(1, keepdim=True)[1]
-        # print(predicted)
-        total += labels.size(0)
-        correct += predicted.eq(labels.view_as(predicted)).sum().item()
-    return 100 * correct / total
-
-
-def makedirs(name):
-    """helper function for python 2 and 3 to call os.makedirs()
-       avoiding an error if the directory to be created already exists"""
-
-    import os, errno
-
-    try:
-        os.makedirs(name)
-    except OSError as ex:
-        if ex.errno == errno.EEXIST and os.path.isdir(name):
-            # ignore existing directory
-            pass
-        else:
-            # a different error happened
-            raise
-
-
-def get_args():
-    parser = ArgumentParser(description='PyTorch/torchtext SNLI example')
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--d_embed', type=int, default=100)
-    parser.add_argument('--d_proj', type=int, default=300)
-    parser.add_argument('--d_hidden', type=int, default=300)
-    parser.add_argument('--n_layers', type=int, default=1)
-    parser.add_argument('--log_every', type=int, default=50)
-    parser.add_argument('--lr', type=float, default=.001)
-    parser.add_argument('--dev_every', type=int, default=1000)
-    parser.add_argument('--save_every', type=int, default=1000)
-    parser.add_argument('--dp_ratio', type=int, default=0.2)
-    parser.add_argument('--no-bidirectional', action='store_false', dest='birnn')
-    parser.add_argument('--preserve-case', action='store_false', dest='lower')
-    parser.add_argument('--no-projection', action='store_false', dest='projection')
-    parser.add_argument('--train_embed', action='store_false', dest='fix_emb')
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--save_path', type=str, default='results')
-    parser.add_argument('--vector_cache', type=str, default=os.path.join(os.getcwd(), '.vector_cache/input_vectors.pt'))
-    parser.add_argument('--word_vectors', type=str, default='glove.6B.100d')
-    parser.add_argument('--resume_snapshot', type=str, default='')
-    args = parser.parse_args()
-    return args
+    return words_ft, idx2words_ft, loaded_embeddings_ft
