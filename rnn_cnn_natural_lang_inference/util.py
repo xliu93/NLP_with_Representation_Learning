@@ -1,11 +1,12 @@
 import os
 import time
 import numpy as np
-import torch.nn.functional as F
+import pandas as pd
+import matplotlib.pyplot as plt
 import logging
 import logging.config
 
-from constants import (DataFileName, DATA_PATH, LogConfig,
+from constants import (DataFileName, DATA_PATH, LogConfig, TrainRecordKey,
                        PAD_TOKEN, PAD_IDX, UNK_TOKEN, UNK_IDX)
 
 
@@ -60,3 +61,36 @@ def get_fasttext_embedding(vocab_size, corpus_name='news', start_idx=2):
             idx2words_ft[i + start_idx] = s[0]
             ordered_words_ft.append(s[0])
     return words_ft, idx2words_ft, loaded_embeddings_ft
+
+
+def back_to_sentence(id2token, tsor_ndarray):
+    token_list = [id2token[idx] for idx in tsor_ndarray]
+    sentence = list(filter(lambda t: t != '<pad>', token_list))
+    sentence = ' '.join(sentence)
+    return sentence
+
+
+def record_to_graph(csv_fname):
+    hist_df = pd.read_csv(csv_fname, index_col=0)
+    train_acc = hist_df[TrainRecordKey.TRAIN_ACC].values
+    train_loss = hist_df[TrainRecordKey.TRAIN_LOSS].values
+    val_acc = hist_df[TrainRecordKey.VAL_ACC].values
+    val_loss = hist_df[TrainRecordKey.VAL_LOSS].values
+    # accuracy curves
+    f, ax = plt.subplots(1, 2, figsize=(12, 5))
+    ax[0].plot(train_acc, label='training acc')
+    ax[0].plot(val_acc, label='val acc')
+    ax[0].set_xlabel('number of steps * interval')
+    ax[0].set_ylabel('Accuracy (%)')
+    ax[0].legend()
+    # loss curves
+    ax[1].plot(train_loss, label='training loss')
+    ax2 = ax[1].twinx()
+    ax2.plot(val_loss, label='val loss', color='red')
+    ax[1].legend()
+    ax2.legend(bbox_to_anchor=(1, 0.95))
+    ax[1].set_xlabel('number of steps * interval')
+    ax[1].set_ylabel('CrossEntropyLoss')
+    # save figure
+    fig_path = csv_fname.replace('.csv', '.png')
+    plt.savefig(fig_path, dpi=300)

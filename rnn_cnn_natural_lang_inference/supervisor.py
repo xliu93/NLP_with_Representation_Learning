@@ -9,9 +9,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from constants import (HParamKey, TrainRecordKey as trKey, CheckpointKey as cpKey,
-                       EncoderType, LoaderType as lType, DEVICE)
+                       TaskName, MultiGenre, EncoderType, LoaderType as lType, DEVICE)
 from util import get_fasttext_embedding
-from data_loader import get_snli_data, snli_token2id, snliDataset, snli_collate_func
+from data_loader import (get_snli_data, get_mnli_data, snli_token2id,
+                         snliDataset, snli_collate_func)
 from models.RNN import RNNModel
 from models.CNN import CNNModel
 
@@ -31,15 +32,18 @@ class Supervisor:
         self.lr_scheduler = None
         self.records = {}
 
-    def overwrite_config(self, config_new):
+    def overwrite_config(self, config_new, reset=True):
         self.config.update(config_new)
-        self.records = {}  # clear records
-        self.model = None  # reset model
-        self.optimizer = None
-        self.lr_scheduler = None
-        gc.collect()
+        if reset:
+            self.records = {}  # clear records
+            self.model = None  # reset model
+            self.optimizer = None
+            self.lr_scheduler = None
+            gc.collect()
 
-    def load_data(self):
+    def load_trained_emb(self):
+        # todo: refactor tuning scripts
+        # spv.load_data() => spv.load_trained_emb(); spv.load_data(...)
         corpus_name = self.config[HParamKey.FT_CORPUS_NAME]
         vocab_size = self.config[HParamKey.VOCAB_SIZE]
 
@@ -47,8 +51,28 @@ class Supervisor:
         self.word2idx, self.idx2word, self.trained_emb = get_fasttext_embedding(vocab_size, corpus_name)
         logger.info("Pre-trained embeddings loaded!")
 
+    def load_data(self, task_name=TaskName.SNLI, genre=None):
+        # corpus_name = self.config[HParamKey.FT_CORPUS_NAME]
+        # vocab_size = self.config[HParamKey.VOCAB_SIZE]
+        #
+        # # Load pre-trained embeddings of FastText
+        # self.word2idx, self.idx2word, self.trained_emb = get_fasttext_embedding(vocab_size, corpus_name)
+        # logger.info("Pre-trained embeddings loaded!")
+
         # Load train/validation sets
-        train_set, val_set = get_snli_data()
+        if task_name == TaskName.SNLI:
+            train_set, val_set = get_snli_data()
+        elif task_name == TaskName.MNLI:
+            train_set, val_set = get_mnli_data()
+            if genre in MultiGenre:
+                train_set = train_set.loc[train_set['genre'] == genre]
+                val_set = val_set.loc[val_set['genre'] == genre]
+            else:
+                logger.error("Unknown genre for MultiNLI task! Supported genres: {}".format(MultiGenre))
+                exit(1)
+        else:
+            logger.error("Unknown NLI task! Supported tasks: [{}, {}]".format(TaskName.SNLI, TaskName.MNLI))
+            exit(1)
         logger.info("\n===== train/validation sets =====\nTrain sample: {}\nValidation sample: {}".format(
             len(train_set), len(val_set)
         ))
@@ -56,6 +80,9 @@ class Supervisor:
         self.datasets[lType.VAL] = val_set
 
     def get_dataloader(self):
+        """
+        Convert self.datasets (pands.DataFrame) to pytorch DataLoaders
+        """
         batch_size = self.config[HParamKey.BATCH_SIZE]
 
         # Convert to indices based on FastText vocabulary
@@ -114,34 +141,37 @@ class Supervisor:
         logger.info("Initialized a CNN model:\n{}".format(self.model))
 
     def init_optimizer(self):
-        self.optimizer = opt.Adam(self.model.parameters(), lr=self.config[HParamKey.LEARNING_RATE])
+        self.optimizer = opt.Adam(self.model.parameters(),
+                                  lr=self.config[HParamKey.LEARNING_RATE],
+                                  weight_decay=self.config[HParamKey.WEIGHT_DECAY])
 
     def init_lr_scheduler(self):
         if self.config[HParamKey.LR_DECAY]:
             self.lr_scheduler = opt.lr_scheduler.StepLR(self.optimizer, step_size=1,
                                                         gamma=self.config[HParamKey.LR_DECAY])
 
-    def train_model(self):
-        # Initialization for training
-        lr_decay = self.config[HParamKey.LR_DECAY]
-        num_epochs = self.config[HParamKey.NUM_EPOCHS]
+    def train_more_epochs(self, num_epochs):
+        """
+        Inner train loop when train a model.
+        The train records are initialized here because the concatenation of
+        records trained on different loaders is meaningless.
+        :param num_epochs: number of epochs to train
+        :return: val_acc, best_val_acc
+        """
+        # optimizer and lr_schedule are ready (new instance, or loaded)
         do_earlystop = self.config[HParamKey.IF_EARLY_STOP]
-
-        # criterion and optimizer
+        # criterion
         criterion = nn.CrossEntropyLoss()
-        self.init_optimizer()
-        self.init_lr_scheduler()
-
+        # init records
         self.records[trKey.TRAIN_ACC] = []
         self.records[trKey.VAL_ACC] = []
         self.records[trKey.TRAIN_LOSS] = []
         self.records[trKey.VAL_LOSS] = []
         best_val_acc = 0
-
         # Train loop
         logger.info("Start training...")
         for epoch in range(num_epochs):
-            if lr_decay:
+            if self.config[HParamKey.LR_DECAY]:
                 self.lr_scheduler.step()
             for i, (prem, hypo, p_len, h_len, label) in enumerate(self.loaders[lType.TRAIN]):
                 self.model.train()
@@ -151,7 +181,7 @@ class Supervisor:
                 loss.backward()
                 self.optimizer.step()
 
-                if i > 0 and i % 30 == 0:
+                if i > 0 and i % self.config[HParamKey.REPORT_INTERVAL] == 0:
                     train_acc, train_loss = self.eval_model(self.loaders[lType.TRAIN])
                     val_acc, val_loss = self.eval_model(self.loaders[lType.VAL])
                     logger.info('(epoch){}/{} (step){}/{} (trainLoss){} (trainAcc){} (valLoss){} (valAcc){}'.format(
@@ -163,8 +193,7 @@ class Supervisor:
                     self.records[trKey.VAL_LOSS].append(val_loss)
                     if val_acc > best_val_acc:
                         best_val_acc = val_acc
-                        # todo: save current best if meet the required 65% val accuracy
-                        if val_acc > 65:
+                        if val_acc > self.config[HParamKey.MODEL_SAVE_REQ]:
                             logger.info("Saving current optimal model...")
                             self.save_checkpoint(epoch_idx=epoch)
                     if do_earlystop and self.check_early_stop():
@@ -174,6 +203,15 @@ class Supervisor:
                     break
         # final eval
         val_acc, val_loss = self.eval_model(self.loaders[lType.VAL])
+        logger.info("Final eval model: (valAcc){} (bestValAcc){}".format(val_acc, best_val_acc))
+        return val_acc, best_val_acc
+
+    def train_model(self):
+        # init optimizer and lr_scheduler
+        self.init_optimizer()
+        self.init_lr_scheduler()
+        # Train loop
+        val_acc, best_val_acc = self.train_more_epochs(self.config[HParamKey.NUM_EPOCHS])
         return val_acc, best_val_acc
 
     def eval_model(self, loader):
@@ -208,22 +246,11 @@ class Supervisor:
         torch.save(content, filename)
 
     def load_checkpoint(self, f_path):
-        # local test
-        if not torch.cuda.is_available():
+        logger.info("Loading trained model ({})...".format(f_path))
+        if not torch.cuda.is_available(): # local test
             content = torch.load(f_path, map_location='cpu')
-            # update config
-            self.overwrite_config(content[cpKey.CONFIG])
-            # update model, optimizer, lr_schedule (if applicable)
-            self.init_model()
-            self.model.load_state_dict(content[cpKey.MODEL])
-            # self.init_optimizer()
-            # self.optimizer.load_state_dict(content[cpKey.OPTIM])
-            # self.init_lr_scheduler()
-            # if self.config[HParamKey.LR_DECAY]:
-            #     self.lr_scheduler.load_state_dict(content[cpKey.LR_SCHD])
-            return
-
-        content = torch.load(f_path)
+        else:
+            content = torch.load(f_path)
         # update config
         self.overwrite_config(content[cpKey.CONFIG])
         # update model, optimizer, lr_schedule (if applicable)
@@ -234,6 +261,7 @@ class Supervisor:
         self.init_lr_scheduler()
         if self.config[HParamKey.LR_DECAY]:
             self.lr_scheduler.load_state_dict(content[cpKey.LR_SCHD])
+        logger.info("Trained model loaded!")
 
     def save_records(self, filename):
         pd.DataFrame(self.records).to_csv(filename)

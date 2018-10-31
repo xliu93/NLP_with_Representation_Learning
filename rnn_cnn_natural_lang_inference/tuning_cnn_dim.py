@@ -20,8 +20,8 @@ util.init_logger()
 hidden_sets = [50, 100, 200, 500]
 kernel_sets = [3, 5, 9, 15]
 lr_sets = [0.01, 0.005, 0.001]
-# dropout_sets = [0, 0.1, 0.2, 0.3, 0.5]
 
+# get supervisor
 spv = Supervisor(config)
 spv.load_data()
 spv.get_dataloader()

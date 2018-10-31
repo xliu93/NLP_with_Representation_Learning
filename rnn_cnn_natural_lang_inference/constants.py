@@ -18,10 +18,28 @@ UNK_TOKEN = '<unk>'
 PAD_IDX = 0
 UNK_IDX = 1
 
+MultiGenre = ['fiction',
+              'government',
+              'slate',
+              'telephone',
+              'travel']
+
+class TaskName:
+    SNLI = 'SNLI'
+    MNLI = 'MultiNLI'
+
 
 class FTcorpus:
     WIKI_NEWS = 'news'
     COMM_CRAWL = 'cc'
+
+
+# class MultiGenre:
+#     FIC = 'fiction'
+#     TEL = 'telephone'
+#     SLA = 'slate'
+#     GOV = 'government'
+#     TRA = 'travel'
 
 
 class DataFileName:
@@ -78,6 +96,8 @@ class HParamKey:
     # train
     BATCH_SIZE = 'batch_size'
     NUM_EPOCHS = 'num_epochs'
+    REPORT_INTERVAL = 'report_interval'
+    MODEL_SAVE_REQ = 'min_accuracy_save'
     LEARNING_RATE = 'learning_rate'
     LR_DECAY = 'lr_decay'
     IF_EARLY_STOP = 'early_stop'
@@ -98,6 +118,8 @@ DefaultConfig = {
     HParamKey.DROPOUT_PROB: 0.0,  # no dropout by default
     HParamKey.NUM_EPOCHS: 20,
     HParamKey.BATCH_SIZE: 256,
+    HParamKey.REPORT_INTERVAL: 30,
+    HParamKey.MODEL_SAVE_REQ: 65,  # assignment required for SNLI validation acc
     HParamKey.LEARNING_RATE: 0.01,
     HParamKey.LR_DECAY: 0.0,     # 0.0 for no decay
     HParamKey.IF_EARLY_STOP: True,
