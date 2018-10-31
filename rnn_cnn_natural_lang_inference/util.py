@@ -9,7 +9,7 @@ from constants import (DataFileName, DATA_PATH, LogConfig,
                        PAD_TOKEN, PAD_IDX, UNK_TOKEN, UNK_IDX)
 
 
-def init_logger(logfile, loglevel=logging.INFO):
+def init_logger(logfile=None, loglevel=logging.INFO):
     logging.getLogger('__main__').setLevel(loglevel)
     if logfile is None:
         LogConfig['loggers']['']['handlers'] = ['console']

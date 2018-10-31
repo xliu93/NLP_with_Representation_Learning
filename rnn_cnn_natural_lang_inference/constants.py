@@ -34,6 +34,12 @@ class DataFileName:
     FT_CC_VOCAB = 'crawl-300d-2M.vec'
 
 
+class LoaderType:
+    TRAIN = 'train'
+    VAL = 'validation'
+    TEST = 'test'
+
+
 class TrainRecordKey:
     TRAIN_ACC = 'train_accuracy'
     VAL_ACC = 'val_accuracy'
@@ -41,12 +47,28 @@ class TrainRecordKey:
     VAL_LOSS = 'val_loss'
 
 
+class CheckpointKey:
+    CONFIG = 'config'
+    MODEL = 'model'
+    OPTIM = 'optimizer'
+    LR_SCHD = 'lr_scheduler'
+    EPOCH_IDX = 'epoch'
+    RECORDS = 'records'
+    MODEL_NAME = 'model_name'
+
+
+class EncoderType:
+    RNN = 'RNN'
+    CNN = 'CNN'
+
+
 class HParamKey:
     # vocabulary
-    FT_CORPUS_NAME = 'ft_corpus_name'
+    FT_CORPUS_NAME = 'ftcorpus_name'
     VOCAB_SIZE = 'vocab_size'
     EMB_SIZE = 'emb_size'
     # model
+    ENCODER_TYPE = 'encoder_type'
     HIDDEN_SIZE = 'hidden_size'
     NUM_LAYER = 'num_layers'
     NUM_CLASS = 'num_classes'
@@ -58,8 +80,8 @@ class HParamKey:
     NUM_EPOCHS = 'num_epochs'
     LEARNING_RATE = 'learning_rate'
     LR_DECAY = 'lr_decay'
-    IF_EARLY_STOP = 'if_earlystop'
-    ES_LOOKBACK = 'earlystop_lookback'
+    IF_EARLY_STOP = 'early_stop'
+    ES_LOOKBACK = 'eslookback'
     MODEL_SAVE_PATH = 'model_save_path'
     # no tuning for optimizer in this task
 
@@ -67,18 +89,19 @@ class HParamKey:
 DefaultConfig = {
     HParamKey.FT_CORPUS_NAME: 'news',
     HParamKey.VOCAB_SIZE: 100000,
+    HParamKey.ENCODER_TYPE: EncoderType.RNN,
     HParamKey.NUM_CLASS: 3,
     HParamKey.NUM_LAYER: 1,
     HParamKey.HIDDEN_SIZE: 100,
     HParamKey.KERNEL_SIZE: 3,
     HParamKey.WEIGHT_DECAY: 0.0,  # no weight decay (L2) by default
     HParamKey.DROPOUT_PROB: 0.0,  # no dropout by default
-    HParamKey.NUM_EPOCHS: 10,
+    HParamKey.NUM_EPOCHS: 20,
     HParamKey.BATCH_SIZE: 256,
     HParamKey.LEARNING_RATE: 0.01,
     HParamKey.LR_DECAY: 0.0,     # 0.0 for no decay
-    HParamKey.IF_EARLY_STOP: False,
-    HParamKey.ES_LOOKBACK: 5,
+    HParamKey.IF_EARLY_STOP: True,
+    HParamKey.ES_LOOKBACK: 10,
     HParamKey.MODEL_SAVE_PATH: './'
 }
 

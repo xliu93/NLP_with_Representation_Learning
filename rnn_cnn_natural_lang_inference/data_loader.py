@@ -27,6 +27,14 @@ def get_snli_data():
     return train_data, valid_data
 
 
+def get_mnli_data():
+    train_file = DATA_PATH + DataFileName.MNLI_TRAIN
+    val_file = DATA_PATH + DataFileName.MNLI_VAL
+    train_data = pd.read_csv(train_file, sep='\t')
+    val_data = pd.read_csv(val_file, sep='\t')
+    return train_data, val_data
+
+
 def token2idx_dataset(sentence_list, token2idx):
     def sentence2idx(sentence):
         # clean-up (?) FastText contains both upper-case and lower-case tokens

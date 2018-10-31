@@ -4,3 +4,5 @@
 */__pycache__/
 sbatch*
 results*
+*.log
+*.csv

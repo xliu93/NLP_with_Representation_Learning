@@ -8,15 +8,14 @@ import torch.optim as opt
 import torch.nn as nn
 import torch.nn.functional as F
 
-from constants import HParamKey, TrainRecordKey as trKey, DEVICE
+from constants import (HParamKey, TrainRecordKey as trKey, CheckpointKey as cpKey,
+                       EncoderType, LoaderType as lType, DEVICE)
 from util import get_fasttext_embedding
 from data_loader import get_snli_data, snli_token2id, snliDataset, snli_collate_func
 from models.RNN import RNNModel
 from models.CNN import CNNModel
 
 logger = logging.getLogger('__main__')
-TRAIN = 'train'
-VAL = 'validation'
 
 
 class Supervisor:
@@ -53,33 +52,46 @@ class Supervisor:
         logger.info("\n===== train/validation sets =====\nTrain sample: {}\nValidation sample: {}".format(
             len(train_set), len(val_set)
         ))
-        self.datasets[TRAIN] = train_set
-        self.datasets[VAL] = val_set
+        self.datasets[lType.TRAIN] = train_set
+        self.datasets[lType.VAL] = val_set
 
     def get_dataloader(self):
         batch_size = self.config[HParamKey.BATCH_SIZE]
 
         # Convert to indices based on FastText vocabulary
-        train_prem, train_hypo, train_label = snli_token2id(self.datasets[TRAIN], self.word2idx)
-        val_prem, val_hypo, val_label = snli_token2id(self.datasets[VAL], self.word2idx)
+        train_prem, train_hypo, train_label = snli_token2id(self.datasets[lType.TRAIN], self.word2idx)
+        val_prem, val_hypo, val_label = snli_token2id(self.datasets[lType.VAL], self.word2idx)
         logger.info("Converted to indices! ")
 
         # Create DataLoader
         logger.info("Creating DataLoader...")
         train_dataset = snliDataset(train_prem, train_hypo, train_label)
-        self.loaders[TRAIN] = torch.utils.data.DataLoader(dataset=train_dataset,
+        self.loaders[lType.TRAIN] = torch.utils.data.DataLoader(dataset=train_dataset,
                                                           batch_size=batch_size,
                                                           collate_fn=snli_collate_func,
                                                           shuffle=True)
         val_dataset = snliDataset(val_prem, val_hypo, val_label)
-        self.loaders[VAL] = torch.utils.data.DataLoader(dataset=val_dataset,
+        self.loaders[lType.VAL] = torch.utils.data.DataLoader(dataset=val_dataset,
                                                         batch_size=batch_size,
                                                         collate_fn=snli_collate_func,
                                                         shuffle=True)
         logger.info("DataLoader generated!")
 
+    def init_model(self):
+        """
+        Initialize a classification model with selected encoder type.
+        """
+        enc_type = self.config[HParamKey.ENCODER_TYPE]
+        if enc_type == EncoderType.RNN:
+            self.init_rnn_model()
+        elif enc_type == EncoderType.CNN:
+            self.init_cnn_model()
+        else:
+            logger.error("Unknown encoder type! Available Encoders: [RNN, CNN]")
+            exit(1)
+
     def init_rnn_model(self):
-        # Get an instance of parametrized model
+        """Get an instance of parametrized RNN model"""
         self.model = RNNModel(
             hidden_size=self.config[HParamKey.HIDDEN_SIZE],
             num_classes=self.config[HParamKey.NUM_CLASS],
@@ -90,6 +102,7 @@ class Supervisor:
         logger.info("Initialized a RNN model:\n{}".format(self.model))
 
     def init_cnn_model(self):
+        """Get an instance of parametrized CNN model"""
         self.model = CNNModel(
             hidden_size=self.config[HParamKey.HIDDEN_SIZE],
             num_classes=self.config[HParamKey.NUM_CLASS],
@@ -100,30 +113,37 @@ class Supervisor:
         ).to(DEVICE)
         logger.info("Initialized a CNN model:\n{}".format(self.model))
 
+    def init_optimizer(self):
+        self.optimizer = opt.Adam(self.model.parameters(), lr=self.config[HParamKey.LEARNING_RATE])
+
+    def init_lr_scheduler(self):
+        if self.config[HParamKey.LR_DECAY]:
+            self.lr_scheduler = opt.lr_scheduler.StepLR(self.optimizer, step_size=1,
+                                                        gamma=self.config[HParamKey.LR_DECAY])
+
     def train_model(self):
         # Initialization for training
-        learning_rate = self.config[HParamKey.LEARNING_RATE]
         lr_decay = self.config[HParamKey.LR_DECAY]
         num_epochs = self.config[HParamKey.NUM_EPOCHS]
         do_earlystop = self.config[HParamKey.IF_EARLY_STOP]
 
         # criterion and optimizer
         criterion = nn.CrossEntropyLoss()
-        self.optimizer = opt.Adam(self.model.parameters(), lr=learning_rate)
-        if lr_decay:  # 0.0 for no decay
-            self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=lr_decay)
+        self.init_optimizer()
+        self.init_lr_scheduler()
 
         self.records[trKey.TRAIN_ACC] = []
         self.records[trKey.VAL_ACC] = []
         self.records[trKey.TRAIN_LOSS] = []
         self.records[trKey.VAL_LOSS] = []
         best_val_acc = 0
-        logger.info("Start training...")
+
         # Train loop
+        logger.info("Start training...")
         for epoch in range(num_epochs):
             if lr_decay:
                 self.lr_scheduler.step()
-            for i, (prem, hypo, p_len, h_len, label) in enumerate(self.loaders[TRAIN]):
+            for i, (prem, hypo, p_len, h_len, label) in enumerate(self.loaders[lType.TRAIN]):
                 self.model.train()
                 self.optimizer.zero_grad()
                 outputs = self.model(prem, hypo, p_len, h_len)  # input for model.forward()
@@ -132,10 +152,10 @@ class Supervisor:
                 self.optimizer.step()
 
                 if i > 0 and i % 30 == 0:
-                    train_acc, train_loss = self.eval_model(self.loaders[TRAIN])
-                    val_acc, val_loss = self.eval_model(self.loaders[VAL])
+                    train_acc, train_loss = self.eval_model(self.loaders[lType.TRAIN])
+                    val_acc, val_loss = self.eval_model(self.loaders[lType.VAL])
                     logger.info('(epoch){}/{} (step){}/{} (trainLoss){} (trainAcc){} (valLoss){} (valAcc){}'.format(
-                        epoch + 1, num_epochs, i + 1, len(self.loaders[TRAIN]),
+                        epoch + 1, num_epochs, i + 1, len(self.loaders[lType.TRAIN]),
                         train_loss, train_acc, val_loss, val_acc))
                     self.records[trKey.TRAIN_ACC].append(train_acc)
                     self.records[trKey.TRAIN_LOSS].append(train_loss)
@@ -143,8 +163,8 @@ class Supervisor:
                     self.records[trKey.VAL_LOSS].append(val_loss)
                     if val_acc > best_val_acc:
                         best_val_acc = val_acc
-                        # todo: save current best
-                        if val_acc > 60:
+                        # todo: save current best if meet the required 65% val accuracy
+                        if val_acc > 65:
                             logger.info("Saving current optimal model...")
                             self.save_checkpoint(epoch_idx=epoch)
                     if do_earlystop and self.check_early_stop():
@@ -153,7 +173,7 @@ class Supervisor:
                 if do_earlystop and self.check_early_stop():  # for nested loop
                     break
         # final eval
-        val_acc, val_loss = self.eval_model(self.loaders[VAL])
+        val_acc, val_loss = self.eval_model(self.loaders[lType.VAL])
         return val_acc, best_val_acc
 
     def eval_model(self, loader):
@@ -178,15 +198,42 @@ class Supervisor:
         filename = self.config[HParamKey.MODEL_SAVE_PATH] + 'checkpoints/' +\
                    self.config['model_name'] + '.tar'
         content = {
-            'model': self.model.state_dict(),
-            'config': self.config,
-            'optim': self.optimizer.state_dict(),
-            'lr_sch': self.lr_scheduler if self.config[HParamKey.LR_DECAY] else None,
-            'epoch': epoch_idx + 1,
-            'records': self.records,
-            'model_name': self.config.get('model_name', 'demo')
+            cpKey.MODEL: self.model.state_dict(),
+            cpKey.CONFIG: self.config,
+            cpKey.OPTIM: self.optimizer.state_dict(),
+            cpKey.LR_SCHD: self.lr_scheduler if self.config[HParamKey.LR_DECAY] else None,
+            cpKey.EPOCH_IDX: epoch_idx,  # might remove later
+            cpKey.RECORDS: self.records  # might remove later
         }
         torch.save(content, filename)
+
+    def load_checkpoint(self, f_path):
+        # local test
+        if not torch.cuda.is_available():
+            content = torch.load(f_path, map_location='cpu')
+            # update config
+            self.overwrite_config(content[cpKey.CONFIG])
+            # update model, optimizer, lr_schedule (if applicable)
+            self.init_model()
+            self.model.load_state_dict(content[cpKey.MODEL])
+            # self.init_optimizer()
+            # self.optimizer.load_state_dict(content[cpKey.OPTIM])
+            # self.init_lr_scheduler()
+            # if self.config[HParamKey.LR_DECAY]:
+            #     self.lr_scheduler.load_state_dict(content[cpKey.LR_SCHD])
+            return
+
+        content = torch.load(f_path)
+        # update config
+        self.overwrite_config(content[cpKey.CONFIG])
+        # update model, optimizer, lr_schedule (if applicable)
+        self.init_model()
+        self.model.load_state_dict(content[cpKey.MODEL])
+        self.init_optimizer()
+        self.optimizer.load_state_dict(content[cpKey.OPTIM])
+        self.init_lr_scheduler()
+        if self.config[HParamKey.LR_DECAY]:
+            self.lr_scheduler.load_state_dict(content[cpKey.LR_SCHD])
 
     def save_records(self, filename):
         pd.DataFrame(self.records).to_csv(filename)
