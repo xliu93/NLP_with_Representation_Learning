@@ -2,7 +2,6 @@
 .idea/
 *.ipynb
 */__pycache__/
-sbatch*
 results*
 *.log
 *.csv
