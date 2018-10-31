@@ -28,7 +28,7 @@ spv.get_dataloader()
 # load trained model
 spv.load_checkpoint(f_path='./results_1540933016/checkpoints/demo_rnn_hidd200_drop0.2_if_eTrue.tar')
 acc, loss = spv.eval_model(spv.loaders[LoaderType.VAL])
-logger.info("Load model evaluated on val_loader: (valAcc){} (valLoss){}".format(acc, loss))
+print("Load model evaluated on val_loader: (valAcc){} (valLoss){}".format(acc, loss))
 
 # ============= Sample Analysis ============
 # Find at least 3 samples from correct and
